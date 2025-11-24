@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen AI Assistant</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: #f7f7f8; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .chat-container { width: 100%; max-width: 800px; text-align: center; }
+        .greeting { font-size: 2rem; font-weight: 400; margin-bottom: 2.5rem; color: #2d2d2d; }
+        .plus-sign { font-size: 1.5rem; color: #666; margin-bottom: 1rem; }
+        .suggested-label { font-size: 0.9rem; color: #8e8ea0; margin-bottom: 1.5rem; font-weight: 500; }
+        .suggestions { display: flex; flex-direction: column; gap: 1rem; width: 90%; max-width: 500px; margin: 0 auto; }
+        .suggestion-btn { background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 0.75rem 1rem; cursor: pointer; text-align: left; font-size: 0.9rem; transition: all 0.2s ease; color: #2d2d2d; }
+        .suggestion-btn:hover { background-color: #f9f9f9; border-color: #d0d0d0; }
+        .suggestion-title { font-weight: 500; display: block; }
+        .suggestion-desc { color: #666; font-size: 0.8rem; display: block; margin-top: 2px; }
+        .chat-interface { display: none; max-width: 800px; width: 100%; height: 600px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-direction: column; }
+        .chat-header { padding: 1rem; border-bottom: 1px solid #e5e5e5; font-weight: 500; }
+        .chat-messages { flex: 1; padding: 1rem; overflow-y: auto; }
+        .message { margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 12px; max-width: 80%; word-wrap: break-word; }
+        .user-message { background: #007bff; color: white; margin-left: auto; }
+        .ai-message { background: #f1f1f1; color: #2d2d2d; }
+        .chat-input { padding: 1rem; border-top: 1px solid #e5e5e5; display: flex; gap: 0.5rem; }
+        .chat-input input { flex: 1; padding: 0.75rem; border: 1px solid #e5e5e5; border-radius: 8px; outline: none; }
+        .chat-input button { padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .back-btn { margin-top: 2rem; padding: 0.5rem 1rem; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .loading { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="welcomeScreen">
+        <div class="greeting">How can I help you today?</div>
+        <div class="plus-sign">+</div>
+        <div class="suggested-label">Suggested</div>
+        <div class="suggestions">
+            <button class="suggestion-btn" onclick="sendSuggestion('Help me study vocabulary for a college entrance exam')">
+                <span class="suggestion-title">Help me study</span>
+                <span class="suggestion-desc">vocabulary for a college entrance exam</span>
+            </button>
+            <button class="suggestion-btn" onclick="sendSuggestion('Show me a code snippet of a website sticky header')">
+                <span class="suggestion-title">Show me a code snippet</span>
+                <span class="suggestion-desc">of a website's sticky header</span>
+            </button>
+            <button class="suggestion-btn" onclick="sendSuggestion('Give me tips to overcome procrastination')">
+                <span class="suggestion-title">Overcome procrastination</span>
+                <span class="suggestion-desc">give me tips</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="chat-interface" id="chatInterface">
+        <div class="chat-header">Qwen AI Assistant</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <button class="back-btn" onclick="showWelcomeScreen()">← Back to Suggestions</button>
+    </div>
+
+    <script>
+        const OLLAMA_URL = 'http://localhost:11434/api/generate';
+        
+        function sendSuggestion(prompt) {
+            showChatInterface();
+            addMessage(prompt, 'user');
+            sendToQwen(prompt);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            if (message) {
+                addMessage(message, 'user');
+                input.value = '';
+                sendToQwen(message);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+
+        async function sendToQwen(prompt) {
+            const loadingId = addMessage('Thinking...', 'ai loading');
+            try {
+                const response = await fetch(OLLAMA_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ model: 'qwen:0.5b', prompt: prompt, stream: false })
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                removeMessage(loadingId);
+                addMessage(data.response, 'ai');
+            } catch (error) {
+                console.error('Error:', error);
+                removeMessage(loadingId);
+                addMessage('Error: Make sure Ollama is running on localhost:11434 and qwen:0.5b model is pulled', 'ai');
+            }
+        }
+
+        function addMessage(text, sender) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            const messageId = 'msg-' + Date.now();
+            messageDiv.id = messageId;
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            return messageId;
+        }
+
+        function removeMessage(id) {
+            const element = document.getElementById(id);
+            if (element) element.remove();
+        }
+
+        function showChatInterface() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('chatInterface').style.display = 'flex';
+        }
+
+        function showWelcomeScreen() {
+            document.getElementById('welcomeScreen').style.display = 'block';
+            document.getElementById('chatInterface').style.display = 'none';
+            document.getElementById('chatMessages').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
