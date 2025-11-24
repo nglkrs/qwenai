@@ -61,7 +61,8 @@
     </div>
 
     <script>
-        const OLLAMA_URL = 'http://localhost:11434/api/generate';
+        // Change this line in your JavaScript:
+        const OLLAMA_URL = '/api/generate';  // Now uses nginx proxy
         
         function sendSuggestion(prompt) {
             showChatInterface();
