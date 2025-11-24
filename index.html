@@ -27,6 +27,7 @@
         .chat-input button { padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
         .back-btn { margin-top: 2rem; padding: 0.5rem 1rem; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; }
         .loading { color: #666; font-style: italic; }
+        .error { color: #dc3545; background: #f8d7da; }
     </style>
 </head>
 <body>
@@ -61,8 +62,9 @@
     </div>
 
     <script>
-        // Change this line in your JavaScript:
-        const OLLAMA_URL = '/api/generate';  // Now uses nginx proxy
+        // Use the port you mapped in docker run command
+        // If you used: docker run -p 8080:80 -p 11435:11434
+        const OLLAMA_URL = 'http://localhost:11434/api/generate';
         
         function sendSuggestion(prompt) {
             showChatInterface();
@@ -90,16 +92,25 @@
                 const response = await fetch(OLLAMA_URL, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ model: 'qwen:0.5b', prompt: prompt, stream: false })
+                    body: JSON.stringify({ 
+                        model: 'qwen:0.5b', 
+                        prompt: prompt, 
+                        stream: false 
+                    })
                 });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
                 removeMessage(loadingId);
                 addMessage(data.response, 'ai');
+                
             } catch (error) {
                 console.error('Error:', error);
                 removeMessage(loadingId);
-                addMessage('Error: Make sure Ollama is running on localhost:11434 and qwen:0.5b model is pulled', 'ai');
+                addMessage(`Error: ${error.message}. Make sure Ollama is running and the model is loaded.`, 'ai error');
             }
         }
 
@@ -130,6 +141,19 @@
             document.getElementById('chatInterface').style.display = 'none';
             document.getElementById('chatMessages').innerHTML = '';
         }
+
+        // Test connection on load
+        async function testConnection() {
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                if (!response.ok) throw new Error('Ollama not responding');
+                console.log('Ollama connection OK');
+            } catch (error) {
+                console.error('Ollama connection failed:', error);
+            }
+        }
+        
+        testConnection();
     </script>
 </body>
 </html>

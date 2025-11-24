@@ -7,13 +7,10 @@ ollama serve &
 # Wait for Ollama to start
 sleep 10
 
-# Pull the model (if not already present)
+# Pull the model
 echo "Pulling Qwen model..."
 ollama pull qwen:0.5b
 
-# Start nginx
-echo "Starting nginx..."
-nginx -c /app/nginx.conf
-
-# Keep the container running
-tail -f /dev/null
+# Start Node.js server
+echo "Starting Node.js server..."
+node server.js
