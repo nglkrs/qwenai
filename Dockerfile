@@ -15,19 +15,16 @@ RUN curl -fsSL https://ollama.ai/install.sh | sh
 # Create app directory
 WORKDIR /app
 
-# Copy package files first (for better caching)
-COPY package*.json ./
-RUN npm install
+# Copy ALL files first
+COPY . .
 
-# Copy source code
-COPY server.js .
-COPY start.sh .
-COPY public/ ./public/
+# Install npm dependencies (if package.json exists)
+RUN if [ -f "package.json" ]; then npm install; fi
 
 # Make startup script executable
 RUN chmod +x start.sh
 
-# Expose ports (FIXED - no comments on same line)
+# Expose ports
 EXPOSE 3000
 EXPOSE 11434
 
